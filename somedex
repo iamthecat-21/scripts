@@ -1,0 +1,806 @@
+-- getproperties fallback
+if not getproperties then
+	getfenv().getproperties = function(instance)
+		if not instance or typeof(instance) ~= "Instance" then return {} end
+		local propertiesTable = {}
+
+		local ok, reflected = pcall(function()
+			return game:GetService("ReflectionService"):GetPropertiesOfClass(instance.ClassName)
+		end)
+
+		if ok and reflected then
+			for _, propData in ipairs(reflected) do
+				local readOk, value = pcall(function()
+					return instance[propData.Name]
+				end)
+				if readOk then
+					propertiesTable[propData.Name] = value
+				end
+			end
+		else
+			for _, propName in ipairs({"Name", "ClassName", "Parent", "Archivable"}) do
+				pcall(function() propertiesTable[propName] = instance[propName] end)
+			end
+		end
+
+		return propertiesTable
+	end
+end
+
+----------------------------------------------------------------
+-- Icons
+----------------------------------------------------------------
+local images = {
+	BindableFunction = "112982173295923",
+	RemoteEvent = "116520720569308",
+	BasePart = "71902649824205",
+	Lighting = "12805342977",
+	ReplicatedFirst = "117595678157922",
+	Configuration = "115979011336246",
+	Folder = "89364372249657",
+	Workspace = "95456161529373",
+	RemoteFunction = "83804403325342",
+	Players = "2243841635",
+	StarterGear = "115979011336246",
+	Backpack = "135273755533681",
+	RobloxReplicatedStorage = "114163516524528",
+	StarterPlayer = "89364372249657",
+	Script = "129118857922530",
+	StarterPack = "96904987865005",
+	BindableEvent = "130047133577926",
+	Part = "71902649824205",
+	ServerStorage = "108344801808355",
+	StarterCharacterScripts = "89364372249657",
+	ModuleScript = "72574623675660",
+	LocalScript = "120549633847891",
+	Teams = "89364372249657",
+	UnionOperation = "71902649824205",
+	ServerScriptService = "128086126394579",
+	StarterPlayerScripts = "89364372249657",
+	MeshPart = "71902649824205",
+	ReplicatedStorage = "114163516524528"
+}
+local function getImageFromInstance(instance)
+	return "rbxassetid://" .. (images[instance.ClassName] or "12905962634")
+end
+
+----------------------------------------------------------------
+-- Theme
+----------------------------------------------------------------
+local THEME = {
+	bg = Color3.fromRGB(24, 24, 29),
+	panel = Color3.fromRGB(32, 32, 39),
+	row = Color3.fromRGB(40, 40, 49),
+	rowHover = Color3.fromRGB(52, 52, 64),
+	selected = Color3.fromRGB(45, 90, 220),
+	stroke = Color3.fromRGB(62, 62, 76),
+	text = Color3.fromRGB(230, 230, 238),
+	subtext = Color3.fromRGB(150, 150, 165),
+	ok = Color3.fromRGB(120, 220, 140),
+	err = Color3.fromRGB(255, 100, 100),
+}
+local FONT = Enum.Font.Gotham
+local FONT_BOLD = Enum.Font.GothamMedium
+
+local function corner(parent, radius)
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(0, radius or 6)
+	c.Parent = parent
+	return c
+end
+
+local function stroke(parent)
+	local s = Instance.new("UIStroke")
+	s.Color = THEME.stroke
+	s.Thickness = 1
+	s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	s.Parent = parent
+	return s
+end
+
+local function padding(parent, p)
+	local u = Instance.new("UIPadding")
+	u.PaddingLeft = UDim.new(0, p)
+	u.PaddingRight = UDim.new(0, p)
+	u.PaddingTop = UDim.new(0, p)
+	u.PaddingBottom = UDim.new(0, p)
+	u.Parent = parent
+end
+
+local function makeLabel(parent, text, size)
+	local l = Instance.new("TextLabel")
+	l.BackgroundTransparency = 1
+	l.Font = FONT
+	l.TextSize = size or 13
+	l.TextColor3 = THEME.text
+	l.TextXAlignment = Enum.TextXAlignment.Left
+	l.TextTruncate = Enum.TextTruncate.AtEnd
+	l.Text = text or ""
+	l.Parent = parent
+	return l
+end
+
+local function makeList(parent, position, size)
+	local sf = Instance.new("ScrollingFrame")
+	sf.Position = position
+	sf.Size = size
+	sf.BackgroundColor3 = THEME.panel
+	sf.BorderSizePixel = 0
+	sf.ScrollBarThickness = 4
+	sf.ScrollBarImageColor3 = THEME.subtext
+	sf.CanvasSize = UDim2.new()
+	sf.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	sf.Parent = parent
+	corner(sf, 8)
+	stroke(sf)
+
+	local layout = Instance.new("UIListLayout")
+	layout.Padding = UDim.new(0, 2)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = sf
+	padding(sf, 4)
+	return sf
+end
+
+----------------------------------------------------------------
+-- Main window
+----------------------------------------------------------------
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "DexRedesign"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.IgnoreGuiInset = true
+
+local Frame = Instance.new("Frame")
+Frame.AnchorPoint = Vector2.new(1, 0)
+Frame.Position = UDim2.new(1, 0, 0, 0)
+Frame.Size = UDim2.new(0, 320, 1, 0)
+Frame.BackgroundColor3 = THEME.bg
+Frame.BorderSizePixel = 0
+Frame.Parent = ScreenGui
+stroke(Frame)
+
+-- Header: back button + path
+local Header = Instance.new("Frame")
+Header.Size = UDim2.new(1, 0, 0, 40)
+Header.BackgroundColor3 = THEME.panel
+Header.BorderSizePixel = 0
+Header.Parent = Frame
+
+local backButton = Instance.new("TextButton")
+backButton.Position = UDim2.new(0, 8, 0, 6)
+backButton.Size = UDim2.new(0, 28, 0, 28)
+backButton.BackgroundColor3 = THEME.row
+backButton.Text = "◀"
+backButton.Font = FONT_BOLD
+backButton.TextSize = 14
+backButton.TextColor3 = THEME.text
+backButton.AutoButtonColor = true
+backButton.Parent = Header
+corner(backButton, 6)
+
+local closeButton = Instance.new("TextButton")
+closeButton.AnchorPoint = Vector2.new(1, 0)
+closeButton.Position = UDim2.new(1, -8, 0, 6)
+closeButton.Size = UDim2.new(0, 28, 0, 28)
+closeButton.BackgroundColor3 = Color3.fromRGB(170, 55, 55)
+closeButton.Text = "✕"
+closeButton.Font = FONT_BOLD
+closeButton.TextSize = 14
+closeButton.TextColor3 = THEME.text
+closeButton.AutoButtonColor = true
+closeButton.Parent = Header
+corner(closeButton, 6)
+
+local copyButton = Instance.new("TextButton")
+copyButton.AnchorPoint = Vector2.new(1, 0)
+copyButton.Position = UDim2.new(1, -42, 0, 6)
+copyButton.Size = UDim2.new(0, 28, 0, 28)
+copyButton.BackgroundColor3 = THEME.row
+copyButton.Text = "📋"
+copyButton.Font = FONT_BOLD
+copyButton.TextSize = 14
+copyButton.TextColor3 = THEME.text
+copyButton.AutoButtonColor = true
+copyButton.Parent = Header
+corner(copyButton, 6)
+
+local pathtext = makeLabel(Header, "", 13)
+pathtext.Position = UDim2.new(0, 44, 0, 0)
+pathtext.Size = UDim2.new(1, -124, 1, 0)
+pathtext.Font = FONT_BOLD
+pathtext.TextTruncate = Enum.TextTruncate.AtEnd
+
+-- Search bar
+local searchbox = Instance.new("TextBox")
+searchbox.Position = UDim2.new(0, 8, 0, 48)
+searchbox.Size = UDim2.new(1, -16, 0, 28)
+searchbox.BackgroundColor3 = THEME.panel
+searchbox.Text = ""
+searchbox.PlaceholderText = "🔍  Search..."
+searchbox.PlaceholderColor3 = THEME.subtext
+searchbox.TextColor3 = THEME.text
+searchbox.Font = FONT
+searchbox.TextSize = 13
+searchbox.TextXAlignment = Enum.TextXAlignment.Left
+searchbox.ClearTextOnFocus = false
+searchbox.Parent = Frame
+corner(searchbox, 6)
+stroke(searchbox)
+do
+	local p = Instance.new("UIPadding")
+	p.PaddingLeft = UDim.new(0, 8)
+	p.Parent = searchbox
+end
+
+-- Panels
+local Explore = makeList(Frame, UDim2.new(0, 8, 0, 84), UDim2.new(1, -16, 0.42, 0))
+local Properties = makeList(Frame, UDim2.new(0, 8, 0.42, 92), UDim2.new(1, -16, 0.25, 0))
+local frameOutput = makeList(Frame, UDim2.new(0, 8, 0.67, 100), UDim2.new(1, -16, 0.33, -144))
+
+local commandbox = Instance.new("TextBox")
+commandbox.AnchorPoint = Vector2.new(0, 1)
+commandbox.Position = UDim2.new(0, 8, 1, -8)
+commandbox.Size = UDim2.new(1, -16, 0, 28)
+commandbox.BackgroundColor3 = THEME.panel
+commandbox.Text = ""
+commandbox.PlaceholderText = "type 'help' to view commands"
+commandbox.PlaceholderColor3 = THEME.subtext
+commandbox.TextColor3 = THEME.text
+commandbox.Font = FONT
+commandbox.TextSize = 13
+commandbox.TextXAlignment = Enum.TextXAlignment.Left
+commandbox.ClearTextOnFocus = false
+commandbox.Parent = Frame
+corner(commandbox, 6)
+stroke(commandbox)
+do
+	local p = Instance.new("UIPadding")
+	p.PaddingLeft = UDim.new(0, 8)
+	p.Parent = commandbox
+end
+
+----------------------------------------------------------------
+-- State
+----------------------------------------------------------------
+local selected = nil          -- selected explorer row (TextButton)
+local selectedConn = nil      -- Changed connection of the selected instance
+local currentinstance = game
+local connections = {}
+local rows = {}               -- { button = TextButton, name = string, lname = string }
+local outputCount = 0
+local functions
+
+----------------------------------------------------------------
+-- Output
+----------------------------------------------------------------
+local function output(text, iserror)
+	outputCount += 1
+	local l = Instance.new("TextLabel")
+	l.Size = UDim2.new(1, 0, 0, 0)
+	l.AutomaticSize = Enum.AutomaticSize.Y
+	l.BackgroundTransparency = 1
+	l.Font = FONT
+	l.TextSize = 12
+	l.TextWrapped = true
+	l.TextXAlignment = Enum.TextXAlignment.Left
+	l.TextYAlignment = Enum.TextYAlignment.Top
+	l.TextColor3 = iserror and THEME.err or THEME.ok
+	l.Text = tostring(text)
+	l.LayoutOrder = -outputCount -- newest on top
+	l.Parent = frameOutput
+end
+
+local function clearList(list)
+	for _, v in list:GetChildren() do
+		if v:IsA("GuiObject") then
+			v:Destroy()
+		end
+	end
+end
+
+----------------------------------------------------------------
+-- Properties
+----------------------------------------------------------------
+local function addproperty(name, value, order)
+	if typeof(value) == "number" then
+		value = math.floor(value * 1000) / 1000
+	end
+
+	local row = Instance.new("Frame")
+	row.Size = UDim2.new(1, 0, 0, 22)
+	row.BackgroundColor3 = THEME.row
+	row.BorderSizePixel = 0
+	row.LayoutOrder = order
+	row.Parent = Properties
+	corner(row, 4)
+
+	local n = makeLabel(row, tostring(name), 12)
+	n.Name = "name"
+	n.Position = UDim2.new(0, 6, 0, 0)
+	n.Size = UDim2.new(0.5, -6, 1, 0)
+	n.TextColor3 = THEME.subtext
+
+	local v = makeLabel(row, tostring(value), 12)
+	v.Name = "value"
+	v.Position = UDim2.new(0.5, 0, 0, 0)
+	v.Size = UDim2.new(0.5, -6, 1, 0)
+end
+
+local function updateproperties()
+	clearList(Properties)
+	if selected and selected.Parent then
+		local instance = selected.object.Value
+		if not instance then return end
+		local props = getproperties(instance)
+		local names = {}
+		for k in pairs(props) do
+			table.insert(names, k)
+		end
+		table.sort(names)
+		for i, k in ipairs(names) do
+			addproperty(k, props[k], i)
+		end
+	end
+end
+
+----------------------------------------------------------------
+-- Selection / explorer
+----------------------------------------------------------------
+----------------------------------------------------------------
+-- Script viewer (decompile)
+----------------------------------------------------------------
+local viewer = Instance.new("Frame")
+viewer.Name = "Viewer"
+viewer.AnchorPoint = Vector2.new(0.5, 0.5)
+viewer.Position = UDim2.new(0.5, 0, 0.5, 0)
+viewer.Size = UDim2.new(0, 520, 0, 400)
+viewer.BackgroundColor3 = THEME.bg
+viewer.BorderSizePixel = 0
+viewer.Visible = false
+viewer.Active = true
+viewer.Parent = ScreenGui
+corner(viewer, 10)
+stroke(viewer)
+
+local viewerHeader = Instance.new("Frame")
+viewerHeader.Size = UDim2.new(1, 0, 0, 40)
+viewerHeader.BackgroundColor3 = THEME.panel
+viewerHeader.BorderSizePixel = 0
+viewerHeader.Parent = viewer
+corner(viewerHeader, 10)
+
+local viewerTitle = makeLabel(viewerHeader, "", 13)
+viewerTitle.Position = UDim2.new(0, 12, 0, 0)
+viewerTitle.Size = UDim2.new(1, -90, 1, 0)
+viewerTitle.Font = FONT_BOLD
+
+local viewerClose = Instance.new("TextButton")
+viewerClose.AnchorPoint = Vector2.new(1, 0)
+viewerClose.Position = UDim2.new(1, -8, 0, 6)
+viewerClose.Size = UDim2.new(0, 28, 0, 28)
+viewerClose.BackgroundColor3 = Color3.fromRGB(170, 55, 55)
+viewerClose.Text = "✕"
+viewerClose.Font = FONT_BOLD
+viewerClose.TextSize = 14
+viewerClose.TextColor3 = THEME.text
+viewerClose.Parent = viewerHeader
+corner(viewerClose, 6)
+
+local viewerCopy = Instance.new("TextButton")
+viewerCopy.AnchorPoint = Vector2.new(1, 0)
+viewerCopy.Position = UDim2.new(1, -42, 0, 6)
+viewerCopy.Size = UDim2.new(0, 28, 0, 28)
+viewerCopy.BackgroundColor3 = THEME.row
+viewerCopy.Text = "📋"
+viewerCopy.Font = FONT_BOLD
+viewerCopy.TextSize = 14
+viewerCopy.TextColor3 = THEME.text
+viewerCopy.Parent = viewerHeader
+corner(viewerCopy, 6)
+
+local codeScroll = Instance.new("ScrollingFrame")
+codeScroll.Position = UDim2.new(0, 8, 0, 48)
+codeScroll.Size = UDim2.new(1, -16, 1, -56)
+codeScroll.BackgroundColor3 = THEME.panel
+codeScroll.BorderSizePixel = 0
+codeScroll.ScrollBarThickness = 5
+codeScroll.ScrollBarImageColor3 = THEME.subtext
+codeScroll.CanvasSize = UDim2.new()
+codeScroll.AutomaticCanvasSize = Enum.AutomaticSize.XY
+codeScroll.ScrollingDirection = Enum.ScrollingDirection.XY
+codeScroll.Parent = viewer
+corner(codeScroll, 8)
+stroke(codeScroll)
+
+local codeBox = Instance.new("TextBox")
+codeBox.AutomaticSize = Enum.AutomaticSize.XY
+codeBox.Size = UDim2.new(1, 0, 1, 0)
+codeBox.BackgroundTransparency = 1
+codeBox.Font = Enum.Font.Code
+codeBox.TextSize = 13
+codeBox.TextColor3 = THEME.text
+codeBox.TextXAlignment = Enum.TextXAlignment.Left
+codeBox.TextYAlignment = Enum.TextYAlignment.Top
+codeBox.MultiLine = true
+codeBox.TextWrapped = false
+codeBox.TextEditable = false
+codeBox.ClearTextOnFocus = false
+codeBox.Text = ""
+codeBox.Parent = codeScroll
+padding(codeBox, 6)
+
+local MAX_DISPLAY = 100000 -- very long text can lag the TextBox, copy still gets everything
+local currentSource = ""
+
+local function openViewer(instance)
+	if not instance or not instance:IsA("LuaSourceContainer") then
+		return "not a script"
+	end
+
+	viewerTitle.Text = instance:GetFullName()
+	codeBox.Text = "-- decompiling..."
+	currentSource = ""
+	viewer.Visible = true
+
+	task.spawn(function()
+		local reader = decompile or function(s) return s.Source end
+		local ok, result = pcall(reader, instance)
+
+		if ok and type(result) == "string" and result ~= "" then
+			currentSource = result
+			if #result > MAX_DISPLAY then
+				codeBox.Text = result:sub(1, MAX_DISPLAY) .. "\n\n-- [truncated for display, copy gets the full source]"
+			else
+				codeBox.Text = result
+			end
+		else
+			currentSource = ""
+			codeBox.Text = "-- could not decompile this script\n-- " .. tostring(result)
+		end
+	end)
+
+	return "viewer opened", true
+end
+
+viewerClose.Activated:Connect(function()
+	viewer.Visible = false
+	codeBox.Text = ""
+	currentSource = ""
+end)
+
+viewerCopy.Activated:Connect(function()
+	local clip = setclipboard or toclipboard or (syn and syn.write_clipboard)
+	if clip and currentSource ~= "" then
+		clip(currentSource)
+		viewerCopy.Text = "✔"
+		task.delay(1, function()
+			viewerCopy.Text = "📋"
+		end)
+	else
+		output(clip and "nothing to copy" or "your executor has no clipboard function", true)
+	end
+end)
+
+local function setSelected(row)
+	if selectedConn then
+		selectedConn:Disconnect()
+		selectedConn = nil
+	end
+	if selected and selected.Parent then
+		selected.BackgroundColor3 = THEME.row
+	end
+	selected = row
+	if row then
+		row.BackgroundColor3 = THEME.selected
+		local inst = row.object.Value
+		if inst then
+			selectedConn = inst.Changed:Connect(updateproperties)
+		end
+	end
+	updateproperties()
+end
+
+local function applySearch()
+	local q = searchbox.Text:lower()
+	for _, r in ipairs(rows) do
+		r.button.Visible = (q == "") or (string.find(r.lname, q, 1, true) ~= nil)
+	end
+end
+
+local function clearexplorer()
+	setSelected(nil)
+	rows = {}
+	clearList(Explore)
+end
+
+local function findRow(name)
+	for _, r in ipairs(rows) do
+		if r.name == tostring(name) then
+			return r.button
+		end
+	end
+end
+
+local function addinstance(instance, index)
+	pcall(function()
+		local c = Instance.new("TextButton")
+		c.Size = UDim2.new(1, 0, 0, 26)
+		c.BackgroundColor3 = THEME.row
+		c.BorderSizePixel = 0
+		c.Text = ""
+		c.AutoButtonColor = false
+		c.LayoutOrder = index
+		c.Name = instance.Name
+		corner(c, 4)
+
+		local thing = Instance.new("ObjectValue")
+		thing.Name = "object"
+		thing.Value = instance
+		thing.Parent = c
+
+		local icon = Instance.new("ImageLabel")
+		icon.BackgroundTransparency = 1
+		icon.Position = UDim2.new(0, 6, 0.5, -9)
+		icon.Size = UDim2.new(0, 18, 0, 18)
+		icon.Image = getImageFromInstance(instance)
+		icon.Parent = c
+
+		local label = makeLabel(c, instance.Name, 13)
+		label.Name = "TextLabel"
+		label.Position = UDim2.new(0, 30, 0, 0)
+		label.Size = UDim2.new(1, -36, 1, 0)
+
+		c.MouseEnter:Connect(function()
+			if selected ~= c then c.BackgroundColor3 = THEME.rowHover end
+		end)
+		c.MouseLeave:Connect(function()
+			if selected ~= c then c.BackgroundColor3 = THEME.row end
+		end)
+
+		local lastclicked = 0
+		c.Activated:Connect(function()
+			local now = tick()
+			if selected == c and now - lastclicked <= 0.4 then
+				functions.open(c)
+				return
+			end
+			lastclicked = now
+			setSelected(c)
+		end)
+
+		c.MouseButton2Click:Connect(function()
+			setSelected(c)
+			if instance:IsA("LuaSourceContainer") then
+				openViewer(instance)
+			end
+		end)
+
+		c.Parent = Explore
+		table.insert(rows, { button = c, name = instance.Name, lname = instance.Name:lower() })
+	end)
+end
+
+local ROOT_SERVICES = {
+	"Workspace", "Players", "CoreGui", "Lighting", "MaterialService",
+	"ReplicatedFirst", "ReplicatedStorage", "ServerScriptService",
+	"ServerStorage", "StarterGui", "StarterPack", "StarterPlayer",
+	"Teams", "SoundService", "TextChatService",
+}
+
+local function updateexplorer()
+	clearexplorer()
+	if currentinstance then
+		for i, v in currentinstance:GetChildren() do
+			if currentinstance == game then
+				if table.find(ROOT_SERVICES, v.Name) then
+					addinstance(v, i)
+				end
+			else
+				addinstance(v, i)
+			end
+		end
+	end
+	pathtext.Text = currentinstance and currentinstance:GetFullName() or ""
+	backButton.BackgroundTransparency = (currentinstance == game) and 0.6 or 0
+	applySearch()
+end
+
+local function changecurrentinstance(new)
+	for _, v in pairs(connections) do
+		v:Disconnect()
+	end
+	connections = {}
+	if new then
+		table.insert(connections, new.ChildAdded:Connect(updateexplorer))
+		table.insert(connections, new.AncestryChanged:Connect(updateexplorer))
+	end
+	currentinstance = new
+	searchbox.Text = ""
+end
+
+----------------------------------------------------------------
+-- Commands
+----------------------------------------------------------------
+functions = {
+	open = function(name)
+		local toopen = typeof(name) == "Instance" and name or findRow(name)
+		if toopen or selected then
+			local instance = (toopen or selected).object.Value
+			changecurrentinstance(instance)
+			updateexplorer()
+		else
+			return "invalid instance"
+		end
+		return "instance opened", true
+	end,
+	back = function()
+		if currentinstance ~= game then
+			changecurrentinstance(currentinstance.Parent)
+			updateexplorer()
+		else
+			return "you cannot go higher than game"
+		end
+		return "success"
+	end,
+	destroy = function(name)
+		local toopen = (name and findRow(name)) or selected
+		if toopen then
+			toopen.object.Value:Destroy()
+			updateproperties()
+		else
+			return "invalid instance"
+		end
+		return "instance destroyed", true
+	end,
+	rename = function(name, newname)
+		local toopen = (name and findRow(name)) or selected
+		if toopen and newname then
+			toopen.object.Value.Name = newname
+			updateexplorer()
+		else
+			return "invalid instance"
+		end
+		return "instance renamed", true
+	end,
+	create = function(classname, name)
+		local thing = Instance.new(classname)
+		if name then
+			thing.Name = name
+		end
+		thing.Parent = currentinstance
+		updateexplorer()
+		return "instance created", true
+	end,
+	fire = function(name)
+		local toopen = (name and findRow(name)) or selected
+		if toopen then
+			toopen = toopen.object.Value
+		end
+		if toopen then
+			if toopen:IsA("RemoteFunction") then
+				return "success, result : " .. tostring(toopen:InvokeServer()), true
+			elseif toopen:IsA("RemoteEvent") then
+				toopen:FireServer()
+				return "fired!", true
+			elseif toopen:IsA("BindableEvent") then
+				toopen:Fire()
+				return "fired!", true
+			elseif toopen:IsA("BindableFunction") then
+				return "success, result : " .. tostring(toopen:Invoke()), true
+			else
+				return "instance is not a remote"
+			end
+		end
+		return "invalid instance"
+	end,
+	changeproperty = function(propertyname, newvalue, name)
+		local toopen = (name and findRow(name)) or selected
+		if toopen then
+			toopen = toopen.object.Value
+			local property = toopen[propertyname]
+			if typeof(property) == "Instance" then
+				return "invalid property"
+			end
+			local t = typeof(property)
+			if t == "number" then
+				toopen[propertyname] = tonumber(newvalue)
+			elseif t == "string" then
+				toopen[propertyname] = newvalue
+			else
+				toopen[propertyname] = loadstring("return " .. newvalue)()
+			end
+			return "successfully changed property", true
+		end
+		return "invalid property"
+	end,
+	decompile = function(name)
+		local row = (name and findRow(name)) or selected
+		if not row then
+			return "invalid instance"
+		end
+		return openViewer(row.object.Value)
+	end,
+	copypath = function(name)
+		local row = (name and findRow(name)) or selected
+		local target = row and row.object.Value or currentinstance
+		if not target then
+			return "invalid instance"
+		end
+
+		local path = target:GetFullName()
+		local clip = setclipboard or toclipboard or (syn and syn.write_clipboard)
+		if clip then
+			clip(path)
+			return "copied: " .. path, true
+		end
+		return "your executor has no clipboard function. path: " .. path
+	end,
+	close = function()
+		for _, v in pairs(connections) do
+			v:Disconnect()
+		end
+		if selectedConn then
+			selectedConn:Disconnect()
+		end
+		ScreenGui:Destroy()
+		return "closed", true
+	end,
+	help = function()
+		return "open (name) - opens the selected instance\n"
+			.. "copypath (name) - copies the path of the selected instance (or current folder)\n"
+			.. "decompile (name) - opens the script viewer (or right-click a script)\n"
+			.. "close - closes the explorer\n"
+			.. "back - go to the parent (or use the ◀ button)\n"
+			.. "destroy (name) - destroys the selected instance\n"
+			.. "rename (name) (newname) - renames the selected instance\n"
+			.. "create (classname) (name) - creates an instance here\n"
+			.. "fire (name) - fires the remote/bindable\n"
+			.. "changeproperty (prop) (value) (name) - edits a property\n"
+			.. "help - shows this list"
+	end,
+}
+
+----------------------------------------------------------------
+-- Events
+----------------------------------------------------------------
+backButton.Activated:Connect(function()
+	local msg = functions.back()
+	if msg ~= "success" then
+		output(msg, true)
+	end
+end)
+
+copyButton.Activated:Connect(function()
+	local msg, ok = functions.copypath()
+	output(msg, not ok)
+end)
+
+closeButton.Activated:Connect(function()
+	functions.close()
+end)
+
+searchbox:GetPropertyChangedSignal("Text"):Connect(applySearch)
+
+commandbox.FocusLost:Connect(function(enter)
+	if enter then
+		local args = commandbox.Text:split(" ")
+		local command = args[1]
+		local func = functions[command]
+		if func then
+			table.remove(args, 1)
+			local success, result = pcall(func, unpack(args))
+			output(tostring(result), not success)
+			commandbox.Text = ""
+		else
+			output("invalid command", true)
+		end
+	end
+end)
+
+----------------------------------------------------------------
+-- Init
+----------------------------------------------------------------
+ScreenGui.Parent = game.Players.LocalPlayer.PlayerGui
+changecurrentinstance(game)
+updateexplorer()
+print("dex initialized")
